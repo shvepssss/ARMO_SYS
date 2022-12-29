@@ -52,9 +52,22 @@ void MainWindow::sendToServer(QString path)
         pix.save(&buffer, c_str2);
         // закрыли буфер
         buffer.close();
-
+        // создаем отдельный массив байтов для работы с QDataStream
+        QByteArray databuf;
+        QDataStream out(&databuf, QIODevice::WriteOnly);
+        // обязательно почистили
+        databuf.clear();
+        // добавили фиксированный размер quint32 (4 байта) и нашу картинку
+        out<<quint32(0)<<bytes;
+        // перешли через QDataStream в начало байтового массива databuf
+        out.device()->seek(0);
+        // вместо 0 записали в зарезервированной области массива размер отправляемого
+        // массива для считывания на сервере
+        out << (quint32)databuf.size()-sizeof(quint32);
         // отправили данные
-        socket->write(bytes);
+        socket->write(databuf);
+        // ждем, когда все данные придут до конца
+        socket->waitForBytesWritten();
         // очистили поле пути к картинке
         ui->lineEdit->clear();
     }

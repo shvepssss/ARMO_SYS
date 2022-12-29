@@ -20,6 +20,7 @@ public:
     QTcpSocket *socket;
 private:
     unsigned countConnections; // количество подключений
+    quint32 m_blockSize; // размер получаемых данных
 public slots:
     void incomingConnection(qintptr socketDecriptor); // обработчик новых подключений
     void readyRead(); // обработчик полученных от клиента сообщений

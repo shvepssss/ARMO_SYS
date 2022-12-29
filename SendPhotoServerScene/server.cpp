@@ -7,6 +7,7 @@ Server::Server()
 
     // инициализация
     countConnections = 0;
+    m_blockSize      = 0;
 }
 
 /* при отключении клиента */
@@ -51,16 +52,36 @@ void Server::readyRead()
     socket = (QTcpSocket*)sender();
 
     // ждем, когда все данные придут до конца
-    socket->waitForReadyRead();
+    socket->waitForBytesWritten();
+    // для удобства считывания размера и массива кратинки используем QDataStream
+    QDataStream in(socket);
+    in.setVersion(QDataStream::Qt_5_6);
 
-    // считали данные сокета
-    QByteArray contents=socket->readAll();
+    // если мы считываем новую картинку
+    if (m_blockSize == 0)
+    {
+        // если ничего не пришло - не читаем
+        if (socket->bytesAvailable() < sizeof(quint32))
+        {
+            return;
+        }
+        // если пришло - считываем размер картинки, который мы должны получить
+        in >> m_blockSize;
+    }
 
+    // если данных пришло меньше, чем указано при отправке - не читаем
+    if (socket->bytesAvailable() < m_blockSize)
+        return;
+
+    // считываем картинку
+    QByteArray contents;
+    in >> contents;
     // получаем изображение
     QPixmap pix;
     pix.loadFromData(contents);
     pix.scaled(1200,1200,Qt::KeepAspectRatio,Qt::SmoothTransformation);
-
+    // очищаем размер картинки, чтобы читать следующую
+    m_blockSize = 0;
     // если картинка есть
     if(!pix.isNull())
     {
